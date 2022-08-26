@@ -1,0 +1,156 @@
+# This docker-compose file deploys all the containers required to run a Feecc workbench standalone installation.
+# It uses pre-built images from the Feecc container registry which requires logging in by running:
+# $ docker login registry.digitalocean.com \
+# -u  \
+# -p 
+
+x-common-variables: &common-variables
+  MONGODB_URI: ${MONGODB_URI}
+  PRODUCTION_ENVIRONMENT: "no"
+
+x-shared-top-level: &shared-top-level
+  restart: "always"
+
+version: "3.7"
+services:
+  feecc-workbench-daemon:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-daemon:development
+    environment:
+      <<: *common-variables
+      ROBONOMICS_ENABLE_DATALOG: "yes"
+      ROBONOMICS_ACCOUNT_SEED: ${ROBONOMICS_ACCOUNT_SEED}
+      ROBONOMICS_SUBSTRATE_NODE_URI: null
+      YOURLS_SERVER: ${YOURLS_SERVER}
+      YOURLS_USERNAME: ${YOURLS_USERNAME}
+      YOURLS_PASSWORD: ${YOURLS_PASSWORD}
+      IPFS_GATEWAY_ENABLE: "yes"
+      IPFS_GATEWAY_IPFS_SERVER_URI: "http://ipfs:8082"
+      PRINTER_ENABLE: ${PRINTER_ENABLE}
+      PRINTER_PRINT_SERVER_URI: ${PRINTER_PRINT_SERVER_URI}
+      PRINTER_SKIP_ACK: "no"
+      PRINTER_PRINT_BARCODE: ${PRINTER_PRINT_BARCODE}
+      PRINTER_PRINT_QR: ${PRINTER_PRINT_QR}
+      PRINTER_PRINT_QR_ONLY_FOR_COMPOSITE: "no"
+      PRINTER_QR_ADD_LOGOS: "no"
+      PRINTER_PRINT_SECURITY_TAG: "no"
+      PRINTER_SECURITY_TAG_ADD_TIMESTAMP: "yes"
+      CAMERA_ENABLE: "yes"
+      CAMERA_CAMERAMAN_URI: "http://cameraman:8081"
+      CAMERA_CAMERA_NO: 1
+      WORKBENCH_NUMBER: 1
+      HID_DEVICES_RFID_READER: ${HID_DEVICES_RFID_READER}
+      HID_DEVICES_BARCODE_READER: ${HID_DEVICES_BARCODE_READER}
+      LOG_ECS_ENABLE: "yes"
+    ports:
+      - "0.0.0.0:5000:5000"
+    links:
+      - feecc-cameraman:cameraman
+      - feecc-ipfs-gateway:ipfs
+      - feecc-print-server:printer
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./unit-passports/:/src/unit-passports/"
+      - "./ecs_log.json:/src/ecs_log.json"
+    depends_on:
+      feecc-print-server:
+        condition: service_healthy
+      feecc-cameraman:
+        condition: service_healthy
+      feecc-ipfs-gateway:
+        condition: service_healthy
+
+  feecc-cameraman:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-cameraman:development
+    init: true
+    privileged: true
+    # network_mode: host
+    volumes:
+      - "./output:/src/output"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "~/.cache/pip/:/root/.cache/pip"
+    environment:
+      <<: *common-variables
+      CAMERAS_CONFIG: ${CAMERAS_CONFIG}
+      FFMPEG_COMMAND: ${FFMPEG_COMMAND}
+
+  feecc-print-server:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-print-server:development
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "~/.cache/pip/:/root/.cache/pip"
+    privileged: true
+    environment:
+      <<: *common-variables
+      PAPER_WIDTH: ${PAPER_WIDTH}
+      PRINTER_MODEL: ${PRINTER_MODEL}
+      RED: ${PRINTER_PAPER_RED}
+
+  feecc-ipfs-gateway:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-ipfs-gateway:development
+    links:
+      - ipfsnode
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "~/.cache/pip/:/root/.cache/pip"
+      - "./output:/src/output"
+    ports:
+      - "5001:5001"
+    environment:
+      <<: *common-variables
+      LOCAL_IPFS_ENABLED: "yes"
+      PINATA_ENABLED: "yes"
+      PINATA_API: ${PINATA_API}
+      PINATA_SECRET_API: ${PINATA_SECRET_API}
+      ROBONOMICS_ENABLE_DATALOG: "no"
+      ROBONOMICS_ACCOUNT_SEED: ""
+      ROBONOMICS_SUBSTRATE_NODE_URL: ""
+      PY_IPFS_HTTP_CLIENT_DEFAULT_ADDR: "/dns/ipfsnode/tcp/5001/http"
+      AUTH_MODE: "workbench"
+    depends_on:
+      ipfsnode:
+        condition: service_healthy
+
+  ipfsnode:
+    <<: *shared-top-level
+    image: ipfs/go-ipfs:v0.14.0
+    volumes:
+      - "~/ipfs/ipfs_staging:/export"
+      - "~/ipfs/ipfs_data:/data/ipfs"
+    healthcheck:
+      interval: 5s
+    ports:
+      - "5021:5001"
+      - "8080:8080"
+
+  feecc-workbench-frontend:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-frontend:dev
+    ports:
+      - "0.0.0.0:3000:3000"
+    depends_on:
+      feecc-workbench-daemon:
+        condition: service_healthy
+
+  feecc-hid-reader-daemon:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-hid-reader-daemon:main
+    privileged: true
+    environment:
+      HID_EVENT_ENDPOINT: ${HID_EVENT_ENDPOINT}
+    volumes:
+      - "/dev/usb:/dev/usb"
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+    depends_on:
+      feecc-workbench-daemon:
+        condition: service_healthy
+    links:
+      - "feecc-workbench-daemon:workbench"
