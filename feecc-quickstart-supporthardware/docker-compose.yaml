@@ -1,8 +1,8 @@
 # This docker-compose file deploys all the containers required to run a Feecc workbench standalone installation.
 # It uses pre-built images from the Feecc container registry which requires logging in by running:
 # $ docker login registry.digitalocean.com \
-# -u  \
-# -p 
+# -u  dop_v1_6debfd8d476d14847bf81aecc74dfcda1fb63a503ba2d61d66eaa113cc272596 \
+# -p dop_v1_6debfd8d476d14847bf81aecc74dfcda1fb63a503ba2d61d66eaa113cc272596
 
 x-common-variables: &common-variables
   MONGODB_URI: ${MONGODB_URI}
@@ -15,7 +15,7 @@ version: "3.7"
 services:
   feecc-workbench-daemon:
     <<: *shared-top-level
-    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-daemon:development
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-daemon:main
     environment:
       <<: *common-variables
       ROBONOMICS_ENABLE_DATALOG: "yes"
@@ -63,7 +63,7 @@ services:
 
   feecc-cameraman:
     <<: *shared-top-level
-    image: registry.digitalocean.com/feeccdevcontainer/feecc-cameraman:development
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-cameraman:main
     init: true
     privileged: true
     # network_mode: host
@@ -79,7 +79,7 @@ services:
 
   feecc-print-server:
     <<: *shared-top-level
-    image: registry.digitalocean.com/feeccdevcontainer/feecc-print-server:development
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-print-server:main
     volumes:
       - "/etc/timezone:/etc/timezone:ro"
       - "/etc/localtime:/etc/localtime:ro"
@@ -93,7 +93,7 @@ services:
 
   feecc-ipfs-gateway:
     <<: *shared-top-level
-    image: registry.digitalocean.com/feeccdevcontainer/feecc-ipfs-gateway:development
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-ipfs-gateway:main
     links:
       - ipfsnode
     volumes:
@@ -132,7 +132,7 @@ services:
 
   feecc-workbench-frontend:
     <<: *shared-top-level
-    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-frontend:dev
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-frontend:master
     ports:
       - "0.0.0.0:3000:3000"
     depends_on:
