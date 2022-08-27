@@ -62,8 +62,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-          # robonomics:
-          # condition: service_healthy
+      robonomics:
+        condition: service_healthy
 
   mongodb:  # TODO
     image: mongo:4.2.22
@@ -81,6 +81,12 @@ services:
     networks:
       - robonomics
     command: "robonomics --dev"
+    healthcheck:
+      test: "curl --fail http://127.0.0.1:9944/ || exit 1"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   ipfs-gateway:
     <<: *shared-top-level
