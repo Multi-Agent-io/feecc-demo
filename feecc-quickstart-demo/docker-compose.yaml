@@ -1,0 +1,132 @@
+# This docker-compose file deploys all the containers required to run a Feecc workbench demo standalone installation.
+# It uses pre-built images from the Feecc container registry which requires logging in by running:
+# $ docker login registry.digitalocean.com -u USERNAME -p PASSWORD
+
+x-common-variables: &common-variables
+  MONGODB_URI: "mongodb+srv://user:password@mongodb/feeccDemo?authSource=admin&replicaSet=db-mongodb-feecc-endostars"
+  PRODUCTION_ENVIRONMENT: "no"
+
+x-shared-top-level: &shared-top-level
+  restart: "no"
+
+version: "3.9"
+
+networks:
+  db:
+    driver: default
+  ipfs:
+    driver: default
+  robonomics:
+    driver: default
+  ipfs-gateway:
+    driver: default
+
+services:
+  workbench-daemon:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-daemon:development
+    environment:
+      <<: *common-variables
+      ROBONOMICS_ENABLE_DATALOG: "yes"
+      ROBONOMICS_ACCOUNT_SEED: ""
+      ROBONOMICS_SUBSTRATE_NODE_URI: "ws://robonomics"
+      YOURLS_SERVER: "url.today"
+      YOURLS_USERNAME: "demouser"
+      YOURLS_PASSWORD: "Jhvw*s4ndnEc6ttm"
+      IPFS_GATEWAY_ENABLE: "yes"
+      IPFS_GATEWAY_IPFS_SERVER_URI: "http://ipfs-gateway:8082"
+      PRINTER_ENABLE: "no"
+      PRINTER_PRINT_SERVER_URI: ""
+      PRINTER_SKIP_ACK: "no"
+      PRINTER_PRINT_BARCODE: "yes"
+      PRINTER_PRINT_QR: "yes"
+      PRINTER_PRINT_QR_ONLY_FOR_COMPOSITE: "no"
+      PRINTER_QR_ADD_LOGOS: "no"
+      PRINTER_PRINT_SECURITY_TAG: "no"
+      PRINTER_SECURITY_TAG_ADD_TIMESTAMP: "yes"
+      CAMERA_ENABLE: "no"
+      CAMERA_CAMERAMAN_URI: ""
+      CAMERA_CAMERA_NO: 1
+      WORKBENCH_NUMBER: 1
+      HID_DEVICES_RFID_READER: "rfid-reader"
+      HID_DEVICES_BARCODE_READER: "barcode-reader"
+      LOG_ECS_ENABLE: "no"
+    ports:
+      - "5000:5000"
+    networks:
+      - ipfs-gateway
+      - robonomics
+      - db
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./unit-passports/:/src/unit-passports/"
+    depends_on:
+      ipfs-gateway:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      robonomics:
+        condition: service_healthy
+
+  mongodb:  # TODO
+    image: mongo
+    networks:
+      - db
+
+  robonomics:
+    image: robonomics:latest
+    networks:
+      - robonomics
+    command: --dev
+
+  ipfs-gateway:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-ipfs-gateway:main
+    networks:
+      - ipfs
+      - ipfs-gateway
+      - db
+    volumes:
+      - "/etc/timezone:/etc/timezone:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "./output:/src/output"
+    environment:
+      <<: *common-variables
+      LOCAL_IPFS_ENABLED: "yes"
+      PINATA_ENABLED: "no"
+      PINATA_API: ""
+      PINATA_SECRET_API: ""
+      ROBONOMICS_ENABLE_DATALOG: "no"
+      ROBONOMICS_ACCOUNT_SEED: ""
+      ROBONOMICS_SUBSTRATE_NODE_URL: ""
+      PY_IPFS_HTTP_CLIENT_DEFAULT_ADDR: "/dns/ipfsnode/tcp/5001/http"
+      AUTH_MODE: "workbench"
+    depends_on:
+      ipfsnode:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+
+  ipfsnode:
+    <<: *shared-top-level
+    image: ipfs/go-ipfs:v0.14.0
+    volumes:
+      - "~/ipfs/ipfs_staging:/export"
+      - "~/ipfs/ipfs_data:/data/ipfs"
+    healthcheck:
+      interval: 5s
+    networks:
+      - ipfs
+    ports:
+      - "5001:5001"
+      - "8080:8080"
+
+  workbench-frontend:
+    <<: *shared-top-level
+    image: registry.digitalocean.com/feeccdevcontainer/feecc-workbench-frontend:master
+    ports:
+      - "3000:3000"
+    depends_on:
+      workbench-daemon:
+        condition: service_healthy
