@@ -13,13 +13,9 @@ version: "3.9"
 
 networks:
   db:
-    driver: default
   ipfs:
-    driver: default
   robonomics:
-    driver: default
   ipfs-gateway:
-    driver: default
 
 services:
   workbench-daemon:
@@ -66,19 +62,25 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-      robonomics:
-        condition: service_healthy
+          # robonomics:
+          # condition: service_healthy
 
   mongodb:  # TODO
-    image: mongo
+    image: mongo:4.2.22
     networks:
       - db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   robonomics:
-    image: robonomics:latest
+    image: robonomics/robonomics:latest
     networks:
       - robonomics
-    command: --dev
+    command: "robonomics --dev"
 
   ipfs-gateway:
     <<: *shared-top-level
