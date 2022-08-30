@@ -3,7 +3,7 @@
 # $ docker login registry.digitalocean.com -u USERNAME -p PASSWORD
 
 x-common-variables: &common-variables
-  MONGODB_URI: "mongodb+srv://user:password@mongodb/feeccDemo?authSource=admin&replicaSet=db-mongodb-feecc-endostars"
+  MONGODB_URI: "mongodb://root:pass@mongodb:27017/feeccDemo"
   PRODUCTION_ENVIRONMENT: "no"
 
 x-shared-top-level: &shared-top-level
@@ -24,7 +24,7 @@ services:
     environment:
       <<: *common-variables
       ROBONOMICS_ENABLE_DATALOG: "yes"
-      ROBONOMICS_ACCOUNT_SEED: ""
+      ROBONOMICS_ACCOUNT_SEED: ""  # TODO: figure out the default seed
       ROBONOMICS_SUBSTRATE_NODE_URI: "ws://robonomics"
       YOURLS_SERVER: "url.today"
       YOURLS_USERNAME: "demouser"
@@ -65,16 +65,23 @@ services:
       robonomics:
         condition: service_healthy
 
-  mongodb:  # TODO
+  mongodb:
     image: mongo:4.2.22
     networks:
       - db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: pass
+    volumes:
+      - ./data/mongo:/docker-entrypoint-initdb.d:ro
+      - ./data/db:/data/db
+      - ./data/configdb:/data/configdb
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      test: echo 'db.runCommand({serverStatus:1}).ok' | mongo admin -u $MONGO_INITDB_ROOT_USERNAME -p $MONGO_INITDB_ROOT_PASSWORD --quiet | grep 1  # TODO: misreports
       interval: 10s
       timeout: 10s
-      retries: 5
-      start_period: 10s
+      retries: 2
+      start_period: 1s
 
   robonomics:
     image: robonomics/robonomics:latest
@@ -82,7 +89,7 @@ services:
       - robonomics
     command: "robonomics --dev"
     healthcheck:
-      test: "curl --fail http://127.0.0.1:9944/ || exit 1"
+      test: "curl --fail http://127.0.0.1:9944/ || exit 1"  # TODO: misreports
       interval: 10s
       timeout: 10s
       retries: 5
