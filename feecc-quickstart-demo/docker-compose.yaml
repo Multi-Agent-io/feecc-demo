@@ -24,8 +24,8 @@ services:
     environment:
       <<: *common-variables
       ROBONOMICS_ENABLE_DATALOG: "yes"
-      ROBONOMICS_ACCOUNT_SEED: ""  # TODO: figure out the default seed
-      ROBONOMICS_SUBSTRATE_NODE_URI: "ws://robonomics"
+      ROBONOMICS_ACCOUNT_SEED: "//Alice"
+      ROBONOMICS_SUBSTRATE_NODE_URI: "ws://robonomics:9944"
       YOURLS_SERVER: "url.today"
       YOURLS_USERNAME: "demouser"
       YOURLS_PASSWORD: "Jhvw*s4ndnEc6ttm"
@@ -87,7 +87,9 @@ services:
     image: robonomics/robonomics:latest
     networks:
       - robonomics
-    command: "robonomics --dev"
+    command: "robonomics --dev --ws-external"
+    ports:
+      - 9944:9944
 
   ipfs-gateway:
     <<: *shared-top-level
