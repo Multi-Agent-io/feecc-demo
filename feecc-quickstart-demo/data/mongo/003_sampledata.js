@@ -1,4 +1,7 @@
+// Connect to the database
 db = connect("mongodb://localhost:27017/feeccDemo");
+
+// Create a sample employee account for testing
 db.employeeData.insertOne(
     {
         "name": "Иванов Иван Иванович",
@@ -7,6 +10,8 @@ db.employeeData.insertOne(
         "rfid_card_id": "1111111111"
     }
 );
+
+// Add a few production schemas for testing
 db.productionSchemas.insertMany(
     [
         {
@@ -112,7 +117,7 @@ db.productionSchemas.insertMany(
                 {
                     "name": "Упаковка сборки",
                     "type": "Упаковка",
-                    "description": "Закртыть крышку коробки, проверить расположение шланга, кабелей и датчика влажности, наклеить этикету на коробку.",
+                    "description": "Закрыть крышку коробки, проверить расположение шланга, кабелей и датчика влажности, наклеить этикету на коробку.",
                     "equipment": [
                         "Распределительная коробка с датчиками"
                     ],
