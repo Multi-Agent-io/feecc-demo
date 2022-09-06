@@ -1,6 +1,3 @@
-// Connect to the database
-db = connect("mongodb://localhost:27017/feecc");
-
 // Create required collections
 db.createCollection("employeeData");
 db.createCollection("protocols");

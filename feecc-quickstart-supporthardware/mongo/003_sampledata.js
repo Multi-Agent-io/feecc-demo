@@ -1,6 +1,3 @@
-// Connect to the database
-db = connect("mongodb://localhost:27017/feecc");
-
 // Create a sample employee account for testing
 db.employeeData.insertOne(
     {
